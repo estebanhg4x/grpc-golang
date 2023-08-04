@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v3.12.4
-// source: hello.proto
+// source: proto/hello.proto
 
 package proto
 
@@ -19,14 +19,19 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	HelloService_Hello_FullMethodName = "/hello.HelloService/Hello"
+	HelloService_Hello_FullMethodName               = "/hello.HelloService/Hello"
+	HelloService_HelloManyLenguagues_FullMethodName = "/hello.HelloService/HelloManyLenguagues"
 )
 
 // HelloServiceClient is the client API for HelloService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HelloServiceClient interface {
+	// Unary
 	Hello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloResponse, error)
+	// Sever streaming
+	// The service retun hello/greeting in different languages
+	HelloManyLenguagues(ctx context.Context, in *HelloManyLenguagesRequest, opts ...grpc.CallOption) (HelloService_HelloManyLenguaguesClient, error)
 }
 
 type helloServiceClient struct {
@@ -46,11 +51,47 @@ func (c *helloServiceClient) Hello(ctx context.Context, in *HelloRequest, opts .
 	return out, nil
 }
 
+func (c *helloServiceClient) HelloManyLenguagues(ctx context.Context, in *HelloManyLenguagesRequest, opts ...grpc.CallOption) (HelloService_HelloManyLenguaguesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &HelloService_ServiceDesc.Streams[0], HelloService_HelloManyLenguagues_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &helloServiceHelloManyLenguaguesClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type HelloService_HelloManyLenguaguesClient interface {
+	Recv() (*HelloManyLenguagesResponse, error)
+	grpc.ClientStream
+}
+
+type helloServiceHelloManyLenguaguesClient struct {
+	grpc.ClientStream
+}
+
+func (x *helloServiceHelloManyLenguaguesClient) Recv() (*HelloManyLenguagesResponse, error) {
+	m := new(HelloManyLenguagesResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // HelloServiceServer is the server API for HelloService service.
 // All implementations must embed UnimplementedHelloServiceServer
 // for forward compatibility
 type HelloServiceServer interface {
+	// Unary
 	Hello(context.Context, *HelloRequest) (*HelloResponse, error)
+	// Sever streaming
+	// The service retun hello/greeting in different languages
+	HelloManyLenguagues(*HelloManyLenguagesRequest, HelloService_HelloManyLenguaguesServer) error
 	mustEmbedUnimplementedHelloServiceServer()
 }
 
@@ -60,6 +101,9 @@ type UnimplementedHelloServiceServer struct {
 
 func (UnimplementedHelloServiceServer) Hello(context.Context, *HelloRequest) (*HelloResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Hello not implemented")
+}
+func (UnimplementedHelloServiceServer) HelloManyLenguagues(*HelloManyLenguagesRequest, HelloService_HelloManyLenguaguesServer) error {
+	return status.Errorf(codes.Unimplemented, "method HelloManyLenguagues not implemented")
 }
 func (UnimplementedHelloServiceServer) mustEmbedUnimplementedHelloServiceServer() {}
 
@@ -92,6 +136,27 @@ func _HelloService_Hello_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HelloService_HelloManyLenguagues_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(HelloManyLenguagesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(HelloServiceServer).HelloManyLenguagues(m, &helloServiceHelloManyLenguaguesServer{stream})
+}
+
+type HelloService_HelloManyLenguaguesServer interface {
+	Send(*HelloManyLenguagesResponse) error
+	grpc.ServerStream
+}
+
+type helloServiceHelloManyLenguaguesServer struct {
+	grpc.ServerStream
+}
+
+func (x *helloServiceHelloManyLenguaguesServer) Send(m *HelloManyLenguagesResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // HelloService_ServiceDesc is the grpc.ServiceDesc for HelloService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -104,6 +169,12 @@ var HelloService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _HelloService_Hello_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "hello.proto",
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "HelloManyLenguagues",
+			Handler:       _HelloService_HelloManyLenguagues_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "proto/hello.proto",
 }

@@ -20,6 +20,19 @@ message HelloResponse{
     string customer_hello = 1;
 }
 
+message HelloManyLenguagesRequest{
+    Hello hello_lenguages = 1; 
+}
+
+message HelloManyLenguagesResponse{
+    string hello_lenguages = 1; 
+}
+
 service HelloService {
+    //Unary
     rpc Hello (HelloRequest) returns (HelloResponse){};
+
+    //Sever streaming
+    //The service retun hello/greeting in different languages
+    rpc HelloManyLenguagues(HelloManyLenguagesRequest) returns (stream HelloManyLenguagesResponse){}; //
 }
